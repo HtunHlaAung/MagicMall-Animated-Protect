@@ -2,286 +2,334 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>MagicMall Animated protect PRO: Glass Edition</title>
-<script src="https://unpkg.com/pako@2.1.0/dist/pako.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MagicMall Animated Protect PRO</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
-:root {
-    --glass: rgba(255, 255, 255, 0.05);
-    --glass-border: rgba(255, 255, 255, 0.1);
-    --accent: #00ff88;
-    --blue: #00d4ff;
-    --text: #ffffff;
-    --bg: #050505;
+:root{
+  --bg:#07090c; --panel:rgba(255,255,255,.045); --line:rgba(255,255,255,.1);
+  --text:#f2f5f7; --dim:rgba(242,245,247,.55); --accent:#00ff88; --blue:#00d4ff;
+  --bad:#ff5d5d; --warn:#ffc24d;
 }
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;color:var(--text);background:var(--bg);
+  background-image:radial-gradient(at 0 0,rgba(0,255,136,.12),transparent 50%),radial-gradient(at 100% 100%,rgba(0,212,255,.12),transparent 50%);
+  font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;display:flex;justify-content:center;padding:24px}
+.wrap{display:grid;grid-template-columns:1.25fr .75fr;gap:24px;width:100%;max-width:1040px;align-items:start}
+@media(max-width:820px){.wrap{grid-template-columns:1fr}}
+.card{background:var(--panel);backdrop-filter:blur(15px);-webkit-backdrop-filter:blur(15px);border:1px solid var(--line);border-radius:22px;padding:28px;box-shadow:0 8px 32px rgba(0,0,0,.6)}
+h1{margin:0 0 4px;font-size:1.6rem;font-weight:800;letter-spacing:-.5px;background:linear-gradient(90deg,var(--accent),var(--blue));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.sub{margin:0 0 20px;color:var(--dim);font-size:.9rem}
 
-body {
-    background-color: var(--bg);
-    background-image: 
-        radial-gradient(at 0% 0%, rgba(0, 255, 136, 0.1) 0px, transparent 50%),
-        radial-gradient(at 100% 100%, rgba(0, 212, 255, 0.1) 0px, transparent 50%);
-    color: var(--text);
-    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
-    margin: 0;
-    overflow-x: hidden;
-}
+.drop{display:block;border:2px dashed var(--line);border-radius:16px;padding:28px 16px;text-align:center;cursor:pointer;background:rgba(0,0,0,.2);transition:.2s}
+.drop:hover,.drop.over,.drop:focus-within{border-color:var(--accent);background:rgba(0,255,136,.06)}
+.drop strong{display:block;font-size:1rem;margin-bottom:4px}
+.drop span{color:var(--dim);font-size:.8rem}
+.drop input{position:absolute;opacity:0;width:1px;height:1px}
 
-.container {
-    display: flex;
-    gap: 30px;
-    max-width: 1000px;
-    width: 95%;
-    padding: 20px;
-}
+.modes{display:flex;gap:6px;margin:16px 0 0;padding:4px;background:rgba(0,0,0,.25);border-radius:12px}
+.modes label{flex:1;text-align:center;padding:9px 6px;border-radius:9px;font-size:.82rem;font-weight:600;cursor:pointer;color:var(--dim)}
+.modes input{position:absolute;opacity:0}
+.modes input:checked+span{color:#000}
+.modes label:has(input:checked){background:var(--accent);color:#000}
+.modes label:has(input:focus-visible){outline:2px solid var(--blue)}
+.opt{display:flex;gap:8px;align-items:center;margin-top:12px;font-size:.82rem;color:var(--dim)}
 
-/* Glassmorphism Effect */
-.glass-card {
-    background: var(--glass);
-    backdrop-filter: blur(15px);
-    -webkit-backdrop-filter: blur(15px);
-    border: 1px solid var(--glass-border);
-    border-radius: 24px;
-    padding: 35px;
-    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
-    transition: transform 0.3s ease;
-}
+.list{margin:16px 0 0;padding:0;list-style:none;max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:6px}
+.row{display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--line);border-radius:12px;background:rgba(0,0,0,.2);cursor:pointer;font-size:.82rem}
+.row.active{border-color:var(--blue)}
+.row .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .sz{color:var(--dim);font-size:.72rem;white-space:nowrap}
+.tag{font-size:.65rem;font-weight:800;padding:3px 9px;border-radius:20px;border:1px solid;white-space:nowrap}
+.tag.locked{color:var(--bad);border-color:var(--bad);background:rgba(255,93,93,.12)}
+.tag.clean{color:var(--accent);border-color:var(--accent);background:rgba(0,255,136,.1)}
+.tag.err{color:var(--warn);border-color:var(--warn);background:rgba(255,194,77,.1)}
+.tag.wait{color:var(--dim);border-color:var(--line)}
+.row .dl{background:none;border:1px solid var(--line);color:var(--blue);border-radius:8px;padding:3px 8px;cursor:pointer;font-size:.75rem}
+.row .dl:hover{background:var(--blue);color:#000}
+.empty{color:var(--dim);font-size:.8rem;text-align:center;padding:10px}
 
-.box { flex: 1.2; position: relative; }
-.preview-pane { 
-    flex: 0.8; 
-    display: flex; 
-    flex-direction: column; 
-    align-items: center; 
-    text-align: center;
-    animation: float 6s ease-in-out infinite;
-}
+.progress{height:6px;border-radius:6px;background:rgba(255,255,255,.06);margin:18px 0 0;overflow:hidden;visibility:hidden}
+.progress.on{visibility:visible}
+#bar{height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--blue));box-shadow:0 0 12px var(--accent);transition:width .25s}
 
-@keyframes float {
-    0%, 100% { transform: translateY(0px); }
-    50% { transform: translateY(-10px); }
-}
+.btn{width:100%;margin-top:14px;padding:15px;border-radius:12px;border:0;font:700 .95rem inherit;font-family:inherit;letter-spacing:.5px;cursor:pointer;transition:.2s}
+.btn:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.primary{background:var(--accent);color:#000;box-shadow:0 4px 15px rgba(0,255,136,.2)}
+.primary:hover:not(:disabled){transform:scale(1.015);box-shadow:0 8px 25px rgba(0,255,136,.4)}
+.primary:disabled{background:#2a2d31;color:#666;cursor:not-allowed;box-shadow:none}
+.secondary{background:transparent;border:1px solid var(--blue);color:var(--blue);display:none}
+.secondary:hover{background:var(--blue);color:#000}
+.ghost{background:transparent;border:1px solid var(--line);color:var(--dim);margin-top:8px;padding:10px;font-size:.8rem}
+.ghost:hover{color:var(--text);border-color:var(--text)}
 
-/* UI Elements */
-h2 { margin: 0 0 10px 0; font-weight: 800; letter-spacing: -1px; font-size: 1.8rem; background: linear-gradient(to right, #00ff88, #00d4ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-p { color: rgba(255,255,255,0.5); font-size: 0.9rem; margin-bottom: 25px; }
+#log{margin-top:16px;font:.7rem/1.5 'Courier New',monospace;color:#8a9097;height:84px;overflow-y:auto;padding:10px;background:rgba(0,0,0,.25);border-radius:10px}
+#log .e{color:var(--bad)} #log .w{color:var(--warn)} #log .ok{color:var(--accent)}
 
-input[type="file"] {
-    width: 100%;
-    padding: 30px 15px;
-    background: rgba(0,0,0,0.2);
-    border: 2px dashed var(--glass-border);
-    border-radius: 15px;
-    color: #fff;
-    cursor: pointer;
-    transition: 0.3s;
-    box-sizing: border-box;
-    text-align: center;
-}
-input[type="file"]:hover { border-color: var(--accent); background: rgba(0, 255, 136, 0.05); }
-
-/* Progress Bar */
-.progress-container { width: 100%; background: rgba(255,255,255,0.05); border-radius: 10px; height: 6px; margin: 25px 0; overflow: hidden; display: none; }
-#progressBar { width: 0%; height: 100%; background: linear-gradient(90deg, var(--accent), var(--blue)); box-shadow: 0 0 15px var(--accent); transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
-
-/* Buttons */
-.btn {
-    width: 100%;
-    padding: 16px;
-    margin-top: 15px;
-    border-radius: 12px;
-    border: none;
-    font-weight: 700;
-    font-size: 1rem;
-    cursor: pointer;
-    transition: all 0.3s;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 10px;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
-
-.process-btn { background: var(--accent); color: #000; box-shadow: 0 4px 15px rgba(0, 255, 136, 0.2); }
-.process-btn:hover { transform: scale(1.02); box-shadow: 0 8px 25px rgba(0, 255, 136, 0.4); }
-.process-btn:disabled { background: #333; color: #666; cursor: not-allowed; transform: none; box-shadow: none; }
-
-.download-btn { 
-    background: transparent; 
-    border: 1px solid var(--blue); 
-    color: var(--blue); 
-    display: none; 
-    margin-top: 15px;
-}
-.download-btn:hover { background: var(--blue); color: #000; box-shadow: 0 0 20px rgba(0, 212, 255, 0.4); }
-
-/* Log & Viewer */
-#log { 
-    margin-top: 20px; font-family: 'Courier New', monospace; font-size: 0.7rem; 
-    color: #888; height: 80px; overflow-y: auto; padding: 10px;
-    background: rgba(0,0,0,0.2); border-radius: 10px;
-}
-
-#lottie-viewer { 
-    width: 100%; height: 250px; background: rgba(0,0,0,0.3); 
-    border-radius: 18px; margin-top: 15px; border: 1px solid var(--glass-border);
-}
-
-.badge { font-size: 0.6rem; padding: 4px 10px; border-radius: 20px; font-weight: 800; margin-bottom: 10px; }
+.preview{text-align:center;position:sticky;top:24px}
+#viewer{width:100%;aspect-ratio:1;background:rgba(0,0,0,.35);border-radius:16px;border:1px solid var(--line)}
+#viewer.checker{background:conic-gradient(#1b1e22 25%,#24282d 0 50%,#1b1e22 0 75%,#24282d 0) 0 0/20px 20px}
+#pname{margin:14px 0 4px;font-weight:600;word-break:break-all;font-size:.9rem}
+#pinfo{font-size:.72rem;color:var(--dim);min-height:1em}
+.tools{display:flex;gap:8px;margin-top:12px}
+.tools .btn{margin-top:0;padding:9px}
 </style>
 </head>
 <body>
+<main class="wrap">
+  <section class="card">
+    <h1>MagicMall Animated Protect PRO</h1>
+    <p class="sub">Lock or unlock Lottie (.json) and Telegram sticker (.tgs) files.</p>
 
-<div class="container">
-    <div class="glass-card box">
-        <h2>MagicMall Animated protect PRO</h2>
-        <p>AnimationAnti protect</p>
-        
-        <input type="file" id="files" multiple accept=".json,.tgs">
-        
-        <div class="progress-container" id="progCont">
-            <div id="progressBar"></div>
-        </div>
+    <label class="drop" id="drop">
+      <strong>Drop files here or click to choose</strong>
+      <span>.json and .tgs, as many as you like</span>
+      <input type="file" id="files" multiple accept=".json,.tgs">
+    </label>
 
-        <button id="processBtn" class="btn process-btn">
-            <span>⚙️</span> Auto-Detect & Process
-        </button>
-
-        <button id="downloadBtn" class="btn download-btn">
-            <span>📥</span> Get Processed Files
-        </button>
-        
-        <div id="log">> Awaiting input...</div>
+    <div class="modes" role="radiogroup" aria-label="Mode">
+      <label><input type="radio" name="mode" value="auto" checked><span>Auto-detect</span></label>
+      <label><input type="radio" name="mode" value="lock"><span>Always lock</span></label>
+      <label><input type="radio" name="mode" value="unlock"><span>Always unlock</span></label>
     </div>
+    <label class="opt"><input type="checkbox" id="deep" checked> Also add the guard inside pre-comps (stronger lock)</label>
 
-    <div class="glass-card preview-pane">
-        <div id="detectBadge"></div>
-        <div id="lottie-viewer"></div>
-        <p id="fileName" style="margin: 15px 0 0 0; font-weight: 600;"></p>
-        <div id="fileInfo" style="font-size: 0.7rem; opacity: 0.4; margin-top: 5px;"></div>
+    <ul class="list" id="list"><li class="empty">No files yet.</li></ul>
+
+    <div class="progress" id="prog"><div id="bar"></div></div>
+    <button id="processBtn" class="btn primary" disabled>Process files</button>
+    <button id="downloadBtn" class="btn secondary">Download</button>
+    <button id="clearBtn" class="btn ghost">Clear all</button>
+    <div id="log" role="log" aria-live="polite">&gt; Waiting for files...</div>
+  </section>
+
+  <aside class="card preview">
+    <div id="viewer"></div>
+    <p id="pname"></p>
+    <div id="pinfo"></div>
+    <div class="tools">
+      <button class="btn ghost" id="playBtn">Pause</button>
+      <button class="btn ghost" id="bgBtn">Background</button>
     </div>
-</div>
+  </aside>
+</main>
 
 <script>
-const FAKE_KEY = "shаpеs"; 
+// Fake key uses Cyrillic "а" (U+0430) and "е" (U+0435) so it looks like "shapes".
+const FAKE_KEY = "sh\u0430p\u0435s";
 const REAL_KEY = "shapes";
-const MARKER = "⚠️_PRO_GUARD_";
-let currentAnimation = null;
-let processedFiles = [];
+const MARKER = "\u26A0\uFE0F_PRO_GUARD_";
+const TGS_LIMIT = 64 * 1024;
 
-const log = (msg) => {
-    const l = document.getElementById("log");
-    l.innerHTML += `<div>> ${msg}</div>`;
-    l.scrollTop = l.scrollHeight;
-};
+const $ = (id) => document.getElementById(id);
+let items = [];          // {file, name, json, locked, status, out, outName, sizeIn, sizeOut, error}
+let anim = null, activeIdx = -1, playing = true;
 
-async function loadFile(file){
-    const buf = await file.arrayBuffer();
-    const uint = new Uint8Array(buf);
-    const text = file.name.endsWith(".tgs") ? pako.ungzip(uint, {to: 'string'}) : new TextDecoder().decode(uint);
-    return JSON.parse(text);
+const fmt = (n) => n < 1024 ? n + " B" : (n / 1024).toFixed(1) + " KB";
+function log(msg, cls = "") {
+  const d = document.createElement("div");
+  if (cls) d.className = cls;
+  d.textContent = "> " + msg;
+  $("log").appendChild(d);
+  $("log").scrollTop = $("log").scrollHeight;
 }
 
-function updatePreview(json, name, isLocked) {
-    const badge = document.getElementById("detectBadge");
-    const viewer = document.getElementById("lottie-viewer");
-    document.getElementById("fileName").innerText = name;
-    if (currentAnimation) currentAnimation.destroy();
-    viewer.innerHTML = "";
+/* ---------- core transforms ---------- */
+function hasFakeKey(o) {
+  if (!o || typeof o !== "object") return false;
+  if (Array.isArray(o)) return o.some(hasFakeKey);
+  for (const k in o) { if (k === FAKE_KEY || hasFakeKey(o[k])) return true; }
+  return false;
+}
+function hasMarker(o) {
+  if (!o || typeof o !== "object") return false;
+  if (Array.isArray(o)) return o.some(x => (x && x.nm === MARKER) || hasMarker(x));
+  for (const k in o) if (hasMarker(o[k])) return true;
+  return false;
+}
+// In place: restore real keys and drop guard layers anywhere in the tree.
+function unlockTree(o) {
+  if (!o || typeof o !== "object") return;
+  if (Array.isArray(o)) {
+    for (let i = o.length - 1; i >= 0; i--) {
+      if (o[i] && o[i].nm === MARKER) o.splice(i, 1); else unlockTree(o[i]);
+    }
+    return;
+  }
+  for (const k of Object.keys(o)) {
+    unlockTree(o[k]);
+    if (k === FAKE_KEY) { o[REAL_KEY] = o[k]; delete o[k]; }
+  }
+}
+function makeGuard() {
+  return { ty: 4, nm: MARKER, ks: { o: { a: 0, k: 0 } }, [FAKE_KEY]: [{ ty: "gr", nm: "_", it: [] }] };
+}
+function lockTree(json, deep) {
+  if (!Array.isArray(json.layers)) json.layers = [];
+  json.layers.unshift(makeGuard());
+  if (deep && Array.isArray(json.assets)) {
+    json.assets.forEach(a => { if (Array.isArray(a.layers)) a.layers.unshift(makeGuard()); });
+  }
+}
+const isLocked = (json) => hasFakeKey(json) || hasMarker(json);
 
-    let previewData = JSON.parse(JSON.stringify(json));
-    const deepClean = (obj) => {
-        if (!obj || typeof obj !== 'object') return;
-        if (Array.isArray(obj)) { obj.forEach(deepClean); return; }
-        for (let k in obj) { if (k === FAKE_KEY) { obj[REAL_KEY] = obj[k]; delete obj[k]; } deepClean(obj[k]); }
-    };
-    if (previewData.layers) previewData.layers = previewData.layers.filter(l => l.nm !== MARKER);
-    deepClean(previewData);
-
-    currentAnimation = lottie.loadAnimation({
-        container: viewer, renderer: 'svg', loop: true, autoplay: true, animationData: previewData
-    });
-
-    badge.innerHTML = isLocked ? `<span class="badge" style="background:rgba(239, 68, 68, 0.2); color:#ff4d4d; border: 1px solid #ef4444;">LOCKED</span>` : `<span class="badge" style="background:rgba(34, 197, 94, 0.2); color:#22c55e; border: 1px solid #22c55e;">CLEAN</span>`;
+async function readFile(file) {
+  const u8 = new Uint8Array(await file.arrayBuffer());
+  const isGz = u8[0] === 0x1f && u8[1] === 0x8b;
+  const text = isGz ? pako.ungzip(u8, { to: "string" }) : new TextDecoder().decode(u8);
+  return { json: JSON.parse(text), gz: isGz };
 }
 
-document.getElementById("processBtn").onclick = async function() {
-    const inputFiles = document.getElementById("files").files;
-    if (!inputFiles.length) return;
-
-    this.disabled = true;
-    const downloadBtn = document.getElementById("downloadBtn");
-    const progCont = document.getElementById("progCont");
-    const progBar = document.getElementById("progressBar");
-
-    downloadBtn.style.display = "none";
-    processedFiles = [];
-    progCont.style.display = "block";
-    progBar.style.width = "0%";
-    
-    log(`Initializing batch for ${inputFiles.length} item(s)...`);
-
-    for (let i = 0; i < inputFiles.length; i++) {
-        const file = inputFiles[i];
-        try {
-            let json = await loadFile(file);
-            const isLocked = JSON.stringify(json).includes(FAKE_KEY);
-            
-            updatePreview(json, file.name, isLocked);
-
-            if (isLocked) {
-                if (json.layers) json.layers = json.layers.filter(l => l.nm !== MARKER);
-                const deepFix = (obj) => {
-                    if (!obj || typeof obj !== 'object') return;
-                    if (Array.isArray(obj)) { obj.forEach(deepFix); return; }
-                    for (let k in obj) { if (k === FAKE_KEY) { obj[REAL_KEY] = obj[k]; delete obj[k]; } deepFix(obj[k]); }
-                };
-                deepFix(json);
-            } else {
-                const guard = { "ty": 4, "nm": MARKER, "ks": {"o":{"a":0,"k":0}}, [FAKE_KEY]: [{"ty":"gr","nm":"_","it":[]}] };
-                if (!json.layers) json.layers = [];
-                json.layers.unshift(guard);
-            }
-
-            const out = JSON.stringify(json);
-            const data = file.name.endsWith(".tgs") ? pako.gzip(out) : out;
-            const finalName = (isLocked ? "fixed_" : "locked_") + file.name;
-            
-            processedFiles.push({ name: finalName, blob: new Blob([data], {type: "application/octet-stream"}) });
-            progBar.style.width = ((i + 1) / inputFiles.length * 100) + "%";
-            log(`Success: ${file.name}`);
-
-        } catch (e) { log(`System Error: ${file.name}`); }
+/* ---------- list + preview ---------- */
+function render() {
+  const ul = $("list");
+  ul.innerHTML = "";
+  if (!items.length) { ul.innerHTML = '<li class="empty">No files yet.</li>'; return; }
+  items.forEach((it, i) => {
+    const li = document.createElement("li");
+    li.className = "row" + (i === activeIdx ? " active" : "");
+    const nm = document.createElement("span"); nm.className = "nm"; nm.textContent = it.name; nm.title = it.name;
+    const sz = document.createElement("span"); sz.className = "sz";
+    sz.textContent = it.out ? fmt(it.sizeIn) + " → " + fmt(it.sizeOut) : fmt(it.sizeIn);
+    const tag = document.createElement("span");
+    if (it.error) { tag.className = "tag err"; tag.textContent = "ERROR"; tag.title = it.error; }
+    else if (it.locked === null) { tag.className = "tag wait"; tag.textContent = "READING"; }
+    else { tag.className = "tag " + (it.locked ? "locked" : "clean"); tag.textContent = it.locked ? "LOCKED" : "CLEAN"; }
+    li.append(nm, sz, tag);
+    if (it.out) {
+      const b = document.createElement("button"); b.className = "dl"; b.textContent = "Save";
+      b.onclick = (e) => { e.stopPropagation(); saveBlob(it.out, it.outName); };
+      li.append(b);
     }
+    li.onclick = () => preview(i);
+    ul.appendChild(li);
+  });
+}
 
-    log("Operation complete. Results ready.");
-    this.disabled = false;
-    downloadBtn.style.display = "flex";
-    downloadBtn.innerHTML = processedFiles.length > 1 ? `<span>📥</span> Download ZIP Archive` : `<span>📥</span> Download Standard File`;
+function preview(i) {
+  const it = items[i];
+  if (!it || !it.json) return;
+  activeIdx = i;
+  if (anim) { anim.destroy(); anim = null; }
+  $("viewer").innerHTML = "";
+  const clean = JSON.parse(JSON.stringify(it.json));
+  unlockTree(clean);
+  try {
+    anim = lottie.loadAnimation({ container: $("viewer"), renderer: "svg", loop: true, autoplay: true, animationData: clean });
+    playing = true; $("playBtn").textContent = "Pause";
+  } catch (e) { log("Preview failed: " + it.name, "e"); }
+  $("pname").textContent = it.name;
+  const w = clean.w, h = clean.h, fr = clean.fr, dur = fr ? ((clean.op - clean.ip) / fr).toFixed(2) + "s" : "";
+  $("pinfo").textContent = [w && h ? w + "×" + h : "", fr ? Math.round(fr) + " fps" : "", dur].filter(Boolean).join("  ·  ");
+  render();
+}
+
+/* ---------- loading files ---------- */
+async function addFiles(fileList) {
+  const added = [...fileList].filter(f => /\.(json|tgs)$/i.test(f.name));
+  if (!added.length) { log("Only .json and .tgs files are supported.", "w"); return; }
+  for (const f of added) {
+    const it = { file: f, name: f.name, json: null, locked: null, sizeIn: f.size, out: null };
+    items.push(it); render();
+    try {
+      const r = await readFile(f);
+      it.json = r.json; it.gz = r.gz || /\.tgs$/i.test(f.name);
+      it.locked = isLocked(r.json);
+    } catch (e) { it.error = "Not valid Lottie data (" + e.message + ")"; log(f.name + ": " + it.error, "e"); }
+    render();
+  }
+  $("processBtn").disabled = !items.some(x => x.json);
+  $("downloadBtn").style.display = "none";
+  const first = items.findIndex(x => x.json);
+  if (activeIdx < 0 && first >= 0) preview(first);
+  log(added.length + " file(s) loaded.");
+}
+
+/* ---------- processing ---------- */
+$("processBtn").onclick = async function () {
+  this.disabled = true;
+  const mode = document.querySelector('input[name="mode"]:checked').value;
+  const deep = $("deep").checked;
+  const todo = items.filter(x => x.json);
+  $("prog").classList.add("on"); $("bar").style.width = "0%";
+  $("downloadBtn").style.display = "none";
+  log(`Processing ${todo.length} file(s), mode: ${mode}...`);
+
+  let n = 0;
+  for (const it of todo) {
+    try {
+      const copy = JSON.parse(JSON.stringify(it.json));
+      const wasLocked = isLocked(copy);
+      const doUnlock = mode === "unlock" || (mode === "auto" && wasLocked);
+      if (doUnlock) unlockTree(copy);
+      else { if (wasLocked) unlockTree(copy); lockTree(copy, deep); }  // never stack guards
+
+      const text = JSON.stringify(copy);
+      const data = it.gz ? pako.gzip(text, { level: 9 }) : text;
+      it.out = new Blob([data], { type: "application/octet-stream" });
+      it.sizeOut = it.out.size;
+      const base = it.name.replace(/^(locked_|fixed_)+/i, "");
+      it.outName = (doUnlock ? "fixed_" : "locked_") + base;
+      it.locked = !doUnlock;
+      log(`${doUnlock ? "Unlocked" : "Locked"}: ${it.name}`, "ok");
+      if (it.gz && it.sizeOut > TGS_LIMIT) log(`${it.name} is ${fmt(it.sizeOut)}, over Telegram's 64 KB sticker limit.`, "w");
+    } catch (e) { it.error = e.message; log(`Failed: ${it.name} (${e.message})`, "e"); }
+    $("bar").style.width = (++n / todo.length * 100) + "%";
+    render();
+    await new Promise(r => setTimeout(r));   // keep the UI responsive
+  }
+  const ready = items.filter(x => x.out).length;
+  log(`Done. ${ready} file(s) ready.`, "ok");
+  this.disabled = false;
+  const dl = $("downloadBtn");
+  dl.style.display = ready ? "block" : "none";
+  dl.textContent = ready > 1 ? `Download ${ready} files as ZIP` : "Download file";
 };
 
-document.getElementById("downloadBtn").onclick = async function() {
-    if (processedFiles.length === 1) {
-        const single = processedFiles[0];
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(single.blob);
-        a.download = single.name;
-        a.click();
-    } else if (processedFiles.length > 1) {
-        const zip = new JSZip();
-        processedFiles.forEach(f => zip.file(f.name, f.blob));
-        const content = await zip.generateAsync({type:"blob"});
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(content);
-        a.download = `Lottie_Guard_Package.zip`;
-        a.click();
-    }
+function saveBlob(blob, name) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+
+$("downloadBtn").onclick = async () => {
+  const ready = items.filter(x => x.out);
+  if (ready.length === 1) return saveBlob(ready[0].out, ready[0].outName);
+  const zip = new JSZip(), seen = {};
+  ready.forEach(f => {
+    let n = f.outName;
+    if (seen[n]) { const d = n.lastIndexOf("."); n = n.slice(0, d) + "_" + seen[n] + n.slice(d); }
+    seen[f.outName] = (seen[f.outName] || 0) + 1;
+    zip.file(n, f.out);
+  });
+  saveBlob(await zip.generateAsync({ type: "blob", compression: "DEFLATE" }), "MagicMall_Protected_Files.zip");
 };
+
+$("clearBtn").onclick = () => {
+  items = []; activeIdx = -1;
+  if (anim) { anim.destroy(); anim = null; }
+  $("viewer").innerHTML = ""; $("pname").textContent = ""; $("pinfo").textContent = "";
+  $("files").value = ""; $("processBtn").disabled = true; $("downloadBtn").style.display = "none";
+  $("prog").classList.remove("on");
+  render(); log("Cleared.");
+};
+
+/* ---------- inputs ---------- */
+$("files").onchange = (e) => { addFiles(e.target.files); e.target.value = ""; };
+const drop = $("drop");
+["dragenter", "dragover"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("over"); }));
+["dragleave", "drop"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove("over"); }));
+drop.addEventListener("drop", e => addFiles(e.dataTransfer.files));
+
+$("playBtn").onclick = () => {
+  if (!anim) return;
+  playing ? anim.pause() : anim.play(); playing = !playing;
+  $("playBtn").textContent = playing ? "Pause" : "Play";
+};
+$("bgBtn").onclick = () => $("viewer").classList.toggle("checker");
 </script>
 </body>
 </html>
