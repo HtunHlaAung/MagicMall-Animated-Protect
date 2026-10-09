@@ -36,6 +36,15 @@ h1{margin:0 0 4px;font-size:1.6rem;font-weight:800;letter-spacing:-.5px;backgrou
 .modes label:has(input:checked){background:var(--accent);color:#000}
 .modes label:has(input:focus-visible){outline:2px solid var(--blue)}
 .opt{display:flex;gap:8px;align-items:center;margin-top:12px;font-size:.82rem;color:var(--dim)}
+.own{margin-top:16px;padding:14px;border:1px solid var(--line);border-radius:14px;background:rgba(0,0,0,.18);display:grid;gap:10px}
+.own h3{margin:0;font-size:.85rem}
+.own .f{display:flex;gap:8px;align-items:center;font-size:.8rem;color:var(--dim)}
+.own .f>span:first-child{width:62px;flex:none}
+.own input[type=text]{flex:1;min-width:0;padding:9px 10px;border-radius:9px;border:1px solid var(--line);background:rgba(0,0,0,.3);color:var(--text);font:inherit}
+.own input[type=text]:focus-visible{outline:2px solid var(--blue)}
+.own input[type=range]{flex:1}
+.own .mini{padding:8px 10px;margin:0;width:auto;font-size:.75rem}
+.own .note{margin:0;font-size:.72rem;color:var(--dim)}
 
 .list{margin:16px 0 0;padding:0;list-style:none;max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:6px}
 .row{display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--line);border-radius:12px;background:rgba(0,0,0,.2);cursor:pointer;font-size:.82rem}
@@ -90,17 +99,29 @@ h1{margin:0 0 4px;font-size:1.6rem;font-weight:800;letter-spacing:-.5px;backgrou
     </label>
 
     <div class="modes" role="radiogroup" aria-label="Mode">
-      <label><input type="radio" name="mode" value="auto" checked><span>Auto-detect</span></label>
-      <label><input type="radio" name="mode" value="lock"><span>Always lock</span></label>
-      <label><input type="radio" name="mode" value="unlock"><span>Always unlock</span></label>
+      <label><input type="radio" name="mode" value="auto" checked><span>Auto</span></label>
+      <label><input type="radio" name="mode" value="lock"><span>Lock</span></label>
+      <label><input type="radio" name="mode" value="unlock"><span>Unlock</span></label>
+      <label><input type="radio" name="mode" value="read"><span>Read ID</span></label>
     </div>
     <label class="opt"><input type="checkbox" id="deep" checked> Also add the guard inside pre-comps (stronger lock)</label>
+
+    <div class="own">
+      <h3>Ownership marks (added when locking)</h3>
+      <div class="f"><span>Your name</span><input type="text" id="owner" placeholder="Studio or author name" maxlength="60"></div>
+      <div class="f"><span>Buyer ID</span><input type="text" id="buyer" placeholder="Empty = new ID for every file" maxlength="40"><button class="btn ghost mini" id="genBtn" type="button">Generate</button></div>
+      <label class="f"><input type="checkbox" id="wmOn" checked> Add a visible watermark</label>
+      <div class="f"><span>Text</span><input type="text" id="wmText" value="MagicMall" maxlength="30"></div>
+      <div class="f"><span>Opacity</span><input type="range" id="wmOp" min="10" max="80" value="35"><span id="wmOpV">35%</span></div>
+      <p class="note">.json files get a text watermark. .tgs files get a small vector mark, because Telegram does not allow images in stickers. Unlock keeps the watermark; use your original file for a clean copy.</p>
+    </div>
 
     <ul class="list" id="list"><li class="empty">No files yet.</li></ul>
 
     <div class="progress" id="prog"><div id="bar"></div></div>
     <button id="processBtn" class="btn primary" disabled>Process files</button>
     <button id="downloadBtn" class="btn secondary">Download</button>
+    <button id="csvBtn" class="btn secondary">Download buyer ID list (CSV)</button>
     <button id="clearBtn" class="btn ghost">Clear all</button>
     <div id="log" role="log" aria-live="polite">&gt; Waiting for files...</div>
   </section>
@@ -126,6 +147,7 @@ const TGS_LIMIT = 64 * 1024;
 const $ = (id) => document.getElementById(id);
 let items = [];          // {file, name, json, locked, status, out, outName, sizeIn, sizeOut, error}
 let anim = null, activeIdx = -1, playing = true;
+let records = [];        // {file, id, owner, date} for the CSV
 
 const fmt = (n) => n < 1024 ? n + " B" : (n / 1024).toFixed(1) + " KB";
 function log(msg, cls = "") {
@@ -163,15 +185,78 @@ function unlockTree(o) {
     if (k === FAKE_KEY) { o[REAL_KEY] = o[k]; delete o[k]; }
   }
 }
-function makeGuard() {
-  return { ty: 4, nm: MARKER, ks: { o: { a: 0, k: 0 } }, [FAKE_KEY]: [{ ty: "gr", nm: "_", it: [] }] };
+function makeGuard(id) {
+  return { ty: 4, nm: MARKER, cl: "MMID:" + id, ks: { o: { a: 0, k: 0 } }, [FAKE_KEY]: [{ ty: "gr", nm: "_", it: [] }] };
 }
-function lockTree(json, deep) {
+function lockTree(json, deep, id) {
   if (!Array.isArray(json.layers)) json.layers = [];
-  json.layers.unshift(makeGuard());
+  json.layers.unshift(makeGuard(id));
   if (deep && Array.isArray(json.assets)) {
-    json.assets.forEach(a => { if (Array.isArray(a.layers)) a.layers.unshift(makeGuard()); });
+    json.assets.forEach(a => { if (Array.isArray(a.layers)) a.layers.unshift(makeGuard(id)); });
   }
+}
+
+/* ---------- buyer ID ---------- */
+const usedIds = new Set();
+function newId() {
+  const A = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+  let id;
+  do {
+    const r = crypto.getRandomValues(new Uint8Array(5));
+    id = "MM-" + [...r].map(b => A[b % A.length]).join("");
+  } while (usedIds.has(id));
+  usedIds.add(id);
+  return id;
+}
+function readId(json) {
+  if (json.meta && json.meta.mmid) return String(json.meta.mmid);
+  const g = (json.layers || []).find(l => l && l.nm === MARKER && typeof l.cl === "string" && l.cl.startsWith("MMID:"));
+  return g ? g.cl.slice(5) : null;
+}
+function stampMeta(json, owner, id) {
+  json.meta = Object.assign({}, json.meta, { mmid: id, d: "MMID:" + id + " " + new Date().toISOString().slice(0, 10) });
+  if (owner) json.meta.a = owner;
+}
+
+/* ---------- watermark ---------- */
+const WM_NAME = "\u26A0\uFE0F_PRO_WM_", WM_ASSET = "mm_wm";
+function textMark(text) {
+  const c = document.createElement("canvas"); c.width = 512; c.height = 128;
+  const x = c.getContext("2d");
+  let s = 64;
+  for (; s > 16; s -= 4) { x.font = `700 ${s}px 'Segoe UI',Arial,sans-serif`; if (x.measureText(text).width <= 480) break; }
+  x.textAlign = "center"; x.textBaseline = "middle";
+  x.lineWidth = 8; x.lineJoin = "round"; x.strokeStyle = "rgba(0,0,0,.6)"; x.strokeText(text, 256, 64);
+  x.fillStyle = "#fff"; x.fillText(text, 256, 64);
+  return c.toDataURL("image/png");
+}
+function stripWatermark(json) {
+  if (Array.isArray(json.layers)) json.layers = json.layers.filter(l => !(l && l.nm === WM_NAME));
+  if (Array.isArray(json.assets)) json.assets = json.assets.filter(a => !(a && a.id === WM_ASSET));
+}
+function addWatermark(json, text, opacity, vector) {
+  stripWatermark(json);
+  json.layers = json.layers || [];
+  const W = json.w || 512, H = json.h || 512, m = Math.min(W, H) * 0.04;
+  const ind = Math.max(0, ...json.layers.map(l => (l && l.ind) || 0)) + 1;
+  const base = { ind, nm: WM_NAME, ip: json.ip || 0, op: json.op || 60, st: 0, sr: 1, ao: 0, bm: 0 };
+  const ks = (p, a, s) => ({ o: { a: 0, k: opacity }, r: { a: 0, k: 0 }, p: { a: 0, k: p }, a: { a: 0, k: a }, s: { a: 0, k: s } });
+  let layer;
+  if (vector) {
+    const r = Math.min(W, H) * 0.035;
+    const tr = { ty: "tr", p: { a: 0, k: [0, 0] }, a: { a: 0, k: [0, 0] }, s: { a: 0, k: [100, 100] }, r: { a: 0, k: 0 }, o: { a: 0, k: 100 } };
+    const ell = (d) => ({ ty: "el", p: { a: 0, k: [0, 0] }, s: { a: 0, k: [d, d] } });
+    const white = { a: 0, k: [1, 1, 1, 1] };
+    layer = { ...base, ty: 4, ks: ks([W - m - r, H - m - r, 0], [0, 0, 0], [100, 100, 100]), shapes: [
+      { ty: "gr", nm: "ring", it: [ell(r * 2), { ty: "st", c: white, o: { a: 0, k: 100 }, w: { a: 0, k: Math.max(1.5, r * 0.18) }, lc: 2, lj: 2 }, tr] },
+      { ty: "gr", nm: "dot", it: [ell(r * 0.7), { ty: "fl", c: white, o: { a: 0, k: 100 } }, tr] }
+    ] };
+  } else {
+    const pw = 512, ph = 128, tw = W * 0.4, sc = tw / pw * 100, th = ph * sc / 100;
+    (json.assets = json.assets || []).push({ id: WM_ASSET, w: pw, h: ph, u: "", p: textMark(text), e: 1 });
+    layer = { ...base, ty: 2, refId: WM_ASSET, ks: ks([W - m - tw / 2, H - m - th / 2, 0], [pw / 2, ph / 2, 0], [sc, sc, 100]) };
+  }
+  json.layers.unshift(layer);
 }
 const isLocked = (json) => hasFakeKey(json) || hasMarker(json);
 
@@ -192,7 +277,7 @@ function render() {
     li.className = "row" + (i === activeIdx ? " active" : "");
     const nm = document.createElement("span"); nm.className = "nm"; nm.textContent = it.name; nm.title = it.name;
     const sz = document.createElement("span"); sz.className = "sz";
-    sz.textContent = it.out ? fmt(it.sizeIn) + " → " + fmt(it.sizeOut) : fmt(it.sizeIn);
+    sz.textContent = (it.out ? fmt(it.sizeIn) + " → " + fmt(it.sizeOut) : fmt(it.sizeIn)) + (it.id ? "  ·  " + it.id : "");
     const tag = document.createElement("span");
     if (it.error) { tag.className = "tag err"; tag.textContent = "ERROR"; tag.title = it.error; }
     else if (it.locked === null) { tag.className = "tag wait"; tag.textContent = "READING"; }
@@ -214,7 +299,7 @@ function preview(i) {
   activeIdx = i;
   if (anim) { anim.destroy(); anim = null; }
   $("viewer").innerHTML = "";
-  const clean = JSON.parse(JSON.stringify(it.json));
+  const clean = JSON.parse(JSON.stringify(it.outJson || it.json));
   unlockTree(clean);
   try {
     anim = lottie.loadAnimation({ container: $("viewer"), renderer: "svg", loop: true, autoplay: true, animationData: clean });
@@ -237,6 +322,7 @@ async function addFiles(fileList) {
       const r = await readFile(f);
       it.json = r.json; it.gz = r.gz || /\.tgs$/i.test(f.name);
       it.locked = isLocked(r.json);
+      it.id = readId(r.json);
     } catch (e) { it.error = "Not valid Lottie data (" + e.message + ")"; log(f.name + ": " + it.error, "e"); }
     render();
   }
@@ -255,16 +341,35 @@ $("processBtn").onclick = async function () {
   const todo = items.filter(x => x.json);
   $("prog").classList.add("on"); $("bar").style.width = "0%";
   $("downloadBtn").style.display = "none";
+  $("csvBtn").style.display = "none";
   log(`Processing ${todo.length} file(s), mode: ${mode}...`);
 
   let n = 0;
+  records = [];
+  const owner = $("owner").value.trim();
+  if (mode !== "unlock" && mode !== "read" && $("wmOn").checked && todo.some(x => x.gz)) {
+    log("TGS files get a vector mark (Telegram blocks images in stickers).", "w");
+  }
   for (const it of todo) {
+    if (mode === "read") {
+      log(it.id ? `${it.name}: buyer ID ${it.id}` : `${it.name}: no buyer ID found`, it.id ? "ok" : "w");
+      $("bar").style.width = (++n / todo.length * 100) + "%";
+      continue;
+    }
     try {
       const copy = JSON.parse(JSON.stringify(it.json));
       const wasLocked = isLocked(copy);
       const doUnlock = mode === "unlock" || (mode === "auto" && wasLocked);
       if (doUnlock) unlockTree(copy);
-      else { if (wasLocked) unlockTree(copy); lockTree(copy, deep); }  // never stack guards
+      else {
+        if (wasLocked) unlockTree(copy);                       // never stack guards
+        const id = $("buyer").value.trim() || newId();
+        it.buyerId = id;
+        stampMeta(copy, owner, id);
+        if ($("wmOn").checked) addWatermark(copy, $("wmText").value.trim() || "MagicMall", +$("wmOp").value, !!it.gz);
+        lockTree(copy, deep, id);
+      }
+      it.outJson = copy;
 
       const text = JSON.stringify(copy);
       const data = it.gz ? pako.gzip(text, { level: 9 }) : text;
@@ -273,6 +378,10 @@ $("processBtn").onclick = async function () {
       const base = it.name.replace(/^(locked_|fixed_)+/i, "");
       it.outName = (doUnlock ? "fixed_" : "locked_") + base;
       it.locked = !doUnlock;
+      if (!doUnlock) {
+        it.id = it.buyerId;
+        records.push({ file: it.outName, id: it.buyerId, owner, date: new Date().toISOString().slice(0, 10) });
+      }
       log(`${doUnlock ? "Unlocked" : "Locked"}: ${it.name}`, "ok");
       if (it.gz && it.sizeOut > TGS_LIMIT) log(`${it.name} is ${fmt(it.sizeOut)}, over Telegram's 64 KB sticker limit.`, "w");
     } catch (e) { it.error = e.message; log(`Failed: ${it.name} (${e.message})`, "e"); }
@@ -280,9 +389,11 @@ $("processBtn").onclick = async function () {
     render();
     await new Promise(r => setTimeout(r));   // keep the UI responsive
   }
+  if (mode === "read") { log("Done reading IDs.", "ok"); this.disabled = false; return; }
   const ready = items.filter(x => x.out).length;
   log(`Done. ${ready} file(s) ready.`, "ok");
   this.disabled = false;
+  $("csvBtn").style.display = records.length ? "block" : "none";
   const dl = $("downloadBtn");
   dl.style.display = ready ? "block" : "none";
   dl.textContent = ready > 1 ? `Download ${ready} files as ZIP` : "Download file";
@@ -308,8 +419,18 @@ $("downloadBtn").onclick = async () => {
   saveBlob(await zip.generateAsync({ type: "blob", compression: "DEFLATE" }), "MagicMall_Protected_Files.zip");
 };
 
+$("csvBtn").onclick = () => {
+  const q = (s) => { s = String(s); if (/^[=+\-@]/.test(s)) s = "'" + s; return '"' + s.replace(/"/g, '""') + '"'; };
+  const rows = [["file", "buyer_id", "owner", "date"], ...records.map(r => [r.file, r.id, r.owner, r.date])];
+  const csv = "\ufeff" + rows.map(r => r.map(q).join(",")).join("\r\n");
+  saveBlob(new Blob([csv], { type: "text/csv" }), "buyer_ids.csv");
+};
+$("genBtn").onclick = () => { $("buyer").value = newId(); };
+$("wmOp").oninput = () => { $("wmOpV").textContent = $("wmOp").value + "%"; };
+
 $("clearBtn").onclick = () => {
-  items = []; activeIdx = -1;
+  items = []; activeIdx = -1; records = [];
+  $("csvBtn").style.display = "none";
   if (anim) { anim.destroy(); anim = null; }
   $("viewer").innerHTML = ""; $("pname").textContent = ""; $("pinfo").textContent = "";
   $("files").value = ""; $("processBtn").disabled = true; $("downloadBtn").style.display = "none";
